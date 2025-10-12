@@ -31,13 +31,16 @@ public class PrivateGameManager {
     }
 
     public PrivateGame create(UUID host) {
+        PartyManager pm = plugin.getPartyManager();
+        java.util.Optional<com.dreamrela.party.Party> optParty = pm.getParty(host);
+        if (!optParty.isPresent() || optParty.get().size() < 2) {
+            // Must be in a party with at least 2 members to create a PG
+            return null;
+        }
         List<String> allowedTeams = Arrays.asList("RED", "GREEN");
         PrivateGame pg = new PrivateGame(host, "PG", allowedTeams);
-        // sync members from party at create time
-        PartyManager pm = plugin.getPartyManager();
-        Set<UUID> members = pm.getMembers(host);
-        if (members.isEmpty()) members = Collections.singleton(host);
-        pg.setMembers(members);
+        // sync members from party at create time (only party members)
+        pg.setMembers(new java.util.LinkedHashSet<>(optParty.get().getMembers()));
         games.put(host, pg);
         return pg;
     }

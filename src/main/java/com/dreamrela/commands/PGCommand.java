@@ -40,10 +40,20 @@ public class PGCommand implements CommandExecutor, TabCompleter {
                 return true;
             case "create":
                 if (!player.hasPermission("PG.pg.create")) { player.sendMessage("§cNo permission."); return true; }
-                plugin.getPrivateGameManager().create(player.getUniqueId());
+                // Require party with at least 2 members
+                java.util.Optional<com.dreamrela.party.Party> optParty = plugin.getPartyManager().getParty(player.getUniqueId());
+                if (!optParty.isPresent() || optParty.get().size() < 2) {
+                    player.sendMessage("§cYou need a party to create a Private Game. Invite someone with §e/party invite <player>§c.");
+                    return true;
+                }
+                com.dreamrela.privategame.PrivateGame created = plugin.getPrivateGameManager().create(player.getUniqueId());
+                if (created == null) {
+                    player.sendMessage("§cCould not create a Private Game. Make sure you're in a party.");
+                    return true;
+                }
                 player.sendMessage("§aCreated Private Game in category §ePG§a with teams §cRED §aand §aGREEN§a.");
-                // open team assignment GUI for the host
-                plugin.getPrivateGameManager().getByHost(player.getUniqueId()).ifPresent(pg -> player.openInventory(com.dreamrela.gui.TeamAssignGUI.build(plugin, pg)));
+                // open team assignment GUI for the host (lists only party members)
+                player.openInventory(com.dreamrela.gui.TeamAssignGUI.build(plugin, created));
                 return true;
             case "start":
                 if (!player.hasPermission("PG.pg.start")) { player.sendMessage("§cNo permission."); return true; }
