@@ -1,0 +1,82 @@
+name: DreamPGs
+main: com.dreamrela.DreamPGs
+version: 1.0.0
+author: com.dreamrela
+softdepend: [BedWars1058, LuckPerms]
+commands:
+  party:
+    description: Party commands (invite, accept, leave, disband, list, promote)
+    aliases: [p]
+    permission: PG.party.base
+    usage: "/party <invite|accept|leave|disband|list|promote> [player]"
+  pg:
+    description: Private Games commands for category PG
+    permission: PG.pg.base
+    usage: "/pg <create|start|disband|info|reload>"
+permissions:
+  PG.*:
+    description: All DreamPGs permissions
+    default: op
+    children:
+      PG.party.*: true
+      PG.pg.*: true
+  PG.party.*:
+    description: All party permissions
+    default: op
+    children:
+      PG.party.base: true
+      PG.party.invite: true
+      PG.party.accept: true
+      PG.party.leave: true
+      PG.party.disband: true
+      PG.party.list: true
+      PG.party.promote: true
+  PG.pg.*:
+    description: All private game permissions
+    default: op
+    children:
+      PG.pg.base: true
+      PG.pg.create: true
+      PG.pg.start: true
+      PG.pg.disband: true
+      PG.pg.info: true
+      PG.pg.reload: true
+  PG.party.base:
+    description: Access to /party base command
+    default: true
+  PG.party.invite:
+    description: Invite players to your party
+    default: true
+  PG.party.accept:
+    description: Accept party invitations
+    default: true
+  PG.party.leave:
+    description: Leave your current party
+    default: true
+  PG.party.disband:
+    description: Disband your party
+    default: op
+  PG.party.list:
+    description: List party members
+    default: true
+  PG.party.promote:
+    description: Promote a party member to leader
+    default: op
+  PG.pg.base:
+    description: Access to /pg base command
+    default: true
+  PG.pg.create:
+    description: Create a Private Game in category PG
+    default: op
+  PG.pg.start:
+    description: Start the Private Game and send party to arena
+    default: op
+  PG.pg.disband:
+    description: Disband the current Private Game
+    default: op
+  PG.pg.info:
+    description: Show info about your Private Game
+    default: true
+  PG.pg.reload:
+    description: Reload the DreamPGs config
+    default: op

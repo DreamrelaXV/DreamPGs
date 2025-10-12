@@ -1,0 +1,37 @@
+# DreamPGs Configuration File
+# Plugin for BedWars1058 Private Games
+
+settings:
+  # Minimum players required to start a game
+  min-players: 2
+
+  # Maximum players allowed in a game
+  max-players: 16
+
+  # Auto-start game when enough players join
+  auto-start: true
+
+  # Countdown time before game starts (seconds)
+  countdown-seconds: 5
+
+messages:
+  prefix: "&8[&cDreamPGs&8] &r"
+  no-permission: "&cYou don't have permission!"
+  game-created: "&aPrivate game created!"
+  game-started: "&aGame started!"
+  game-ended: "&eGame ended!"
+  party-created: "&aParty created!"
+  party-disbanded: "&eParty disbanded!"
+  player-joined-party: "&a{player} joined your party!"
+  player-left-party: "&e{player} left your party!"
+
+teams:
+  enabled-teams: "RED,GREEN"
+
+hosting:
+  # Configure how many private games a player can host per day, based on LuckPerms primary group.
+  # Use an integer or "unlimited" (or -1) for no limit.
+  groups:
+    default: "1"
+    vip: "5"
+    mvp: "unlimited"

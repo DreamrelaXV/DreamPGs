@@ -1,0 +1,40 @@
+name: DreamPGs
+version: 1.0.0
+main: com.dreamrela.dreampgs.DreamPGs
+author: Dreamrela
+depend: [BedWars1058]
+softdepend: [Vault]
+
+commands:
+  pg:
+    description: Private games main command
+    usage: /<command> [create|start|stop|settings]
+    permission: pg.use
+  party:
+    description: Party management commands
+    usage: /<command> [create|invite|accept|deny|leave|kick|list]
+    permission: pg.party
+  pgadmin:
+    description: Private games admin commands
+    usage: /<command> [forcestart|forcestop|reload]
+    permission: pg.admin
+
+permissions:
+  pg.use:
+    description: Allows using private games
+    default: op
+  pg.create:
+    description: Allows creating private games
+    default: op
+  pg.party:
+    description: Allows using party commands
+    default: op
+  pg.admin:
+    description: Admin commands for private games
+    default: op
+  pg.perm:
+    description: Base permission for private games
+    default: op
+  pg.category.use:
+    description: Allows using PG category
+    default: op
