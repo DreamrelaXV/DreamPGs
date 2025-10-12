@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>DreamPGs</name>
-    <description>BedWars Private Games plugin by Dreamrela for BW1058</description>
+    <description>BedWars Private Games plugin for Carbon-Spigot 1.8</description>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -25,10 +25,28 @@
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
         
-        <!-- BedWars1058 official repository (no local install needed) -->
+        <!-- BedWars1058 official repository (releases) -->
         <repository>
-            <id>andrei1058-repo</id>
+            <id>andrei1058-releases</id>
             <url>https://repo.andrei1058.dev/releases</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        
+        <!-- BedWars1058 snapshots (needed for 2023.1-SNAPSHOT) -->
+        <repository>
+            <id>andrei1058-snapshots</id>
+            <url>https://repo.andrei1058.dev/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
         </repository>
         
         <!-- LuckPerms API -->
@@ -57,13 +75,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- BedWars1058 API - from official repository -->
-        <dependency>
-            <groupId>com.andrei1058.bedwars</groupId>
-            <artifactId>bedwars-api</artifactId>
-            <version>2023.1</version>
-            <scope>provided</scope>
-        </dependency>
 
         <!-- LuckPerms API -->
         <dependency>

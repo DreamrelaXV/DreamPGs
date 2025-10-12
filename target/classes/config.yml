@@ -27,3 +27,11 @@ messages:
 
 teams:
   enabled-teams: "RED,GREEN"
+
+hosting:
+  # Configure how many private games a player can host per day, based on LuckPerms primary group.
+  # Use an integer or "unlimited" (or -1) for no limit.
+  groups:
+    default: "1"
+    vip: "5"
+    mvp: "unlimited"
