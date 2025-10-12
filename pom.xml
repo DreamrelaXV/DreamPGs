@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>DreamPGs</name>
-    <description>BedWars Private Games plugin for Carbon-Spigot 1.8</description>
+    <description>BedWars Private Games plugin by Dreamrela</description>
 
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
