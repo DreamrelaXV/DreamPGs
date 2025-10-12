@@ -79,7 +79,7 @@ Private game permissions:
 - Uses `maven-shade-plugin` for packaging (no dependencies shaded due to `provided`).
 
 ## License
-Pending choice. If you’re unsure, MIT is a simple permissive default that allows broad use while retaining copyright.
+MIT
 
 ## Acknowledgements
 - SpigotMC / Spigot-API
