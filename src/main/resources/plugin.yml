@@ -1,7 +1,7 @@
 name: DreamPGs
 main: com.dreamrela.DreamPGs
 version: 1.0.0
-author: com.dreamrela
+author: Dreamrela
 softdepend: [BedWars1058, LuckPerms]
 commands:
   party:
