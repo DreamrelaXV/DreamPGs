@@ -34,6 +34,10 @@ public class PGCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase(Locale.ROOT);
         switch (sub) {
+            case "help":
+                if (!player.hasPermission("PG.pg.base")) { player.sendMessage("§cNo permission."); return true; }
+                sendHelp(player);
+                return true;
             case "create":
                 if (!player.hasPermission("PG.pg.create")) { player.sendMessage("§cNo permission."); return true; }
                 plugin.getPrivateGameManager().create(player.getUniqueId());
@@ -90,7 +94,7 @@ public class PGCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("create", "start", "disband", "info", "reload");
+            return Arrays.asList("help", "create", "start", "disband", "info", "reload");
         }
         return Collections.emptyList();
     }

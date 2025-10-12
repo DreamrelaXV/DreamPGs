@@ -110,6 +110,47 @@ public class BW1058Hook {
         return names;
     }
 
+    // List arena names filtered by BedWars group/category name. Optionally only include joinable ones.
+    public java.util.List<String> listArenasByGroup(String groupName, boolean onlyJoinable) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        if (bedWarsApi == null) return names;
+        if (groupName == null || groupName.isEmpty()) return names;
+        try {
+            Object arenaUtil = safeInvoke(bedWarsApi, "getArenaUtil");
+            if (arenaUtil == null) return names;
+            java.util.List<?> arenas = castList(safeInvoke(arenaUtil, "getArenas"));
+            if (arenas == null) return names;
+            for (Object a : arenas) {
+                String g = resolveGroupName(a);
+                if (g == null || !g.equalsIgnoreCase(groupName)) continue;
+                if (onlyJoinable) {
+                    String status = String.valueOf(safeInvoke(a, "getStatus"));
+                    if (!isJoinableStatus(status)) continue;
+                }
+                String nm = resolveArenaName(a);
+                if (nm != null) names.add(nm);
+            }
+        } catch (Throwable ignored) {}
+        return names;
+    }
+
+    private String resolveGroupName(Object arena) {
+        if (arena == null) return null;
+        Object group = safeInvoke(arena, "getGroup");
+        if (group == null) group = safeInvoke(arena, "getArenaGroup");
+        if (group == null) group = safeInvoke(arena, "getCategory");
+        if (group == null) group = safeInvoke(arena, "getMode");
+        if (group == null) {
+            Object name = safeInvoke(arena, "getGroupName");
+            if (name == null) name = safeInvoke(arena, "getCategoryName");
+            if (name != null) return String.valueOf(name);
+        }
+        if (group == null) return null;
+        if (group instanceof String) return (String) group;
+        Object name = safeInvoke(group, "getName");
+        return name != null ? String.valueOf(name) : String.valueOf(group);
+    }
+
     // Start match in a specific arena and assign teams according to assignments map
     public boolean startPrivateMatchWithAssignments(String arenaName, java.util.List<Player> players, java.util.Map<java.util.UUID, String> assignments) {
         if (bedWarsApi == null) return false;

@@ -12,7 +12,7 @@ commands:
   pg:
     description: Private Games commands for category PG
     permission: PG.pg.base
-    usage: "/pg <create|start|disband|info|reload>"
+    usage: "/pg <help|create|start|disband|info|reload>"
 permissions:
   PG.*:
     description: All DreamPGs permissions

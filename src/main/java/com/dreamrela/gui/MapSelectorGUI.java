@@ -15,8 +15,9 @@ public class MapSelectorGUI {
     public static String title() { return "PG: Select Map"; }
 
     public static Inventory build(DreamPGs plugin) {
-        List<String> arenas = plugin.getBw1058Hook().listJoinableArenas();
-        int size = ((arenas.size() / 9) + 1) * 9;
+        // Show only maps in the BedWars group/category "PG", and only those that are joinable
+        List<String> arenas = plugin.getBw1058Hook().listArenasByGroup("PG", true);
+        int size = ((Math.max(arenas.size(), 1) / 9) + 1) * 9;
         if (size < 27) size = 27;
         if (size > 54) size = 54;
         Inventory inv = Bukkit.createInventory(null, size, title());
@@ -27,6 +28,13 @@ public class MapSelectorGUI {
             im.setDisplayName("§e" + name);
             it.setItemMeta(im);
             inv.setItem(slot++, it);
+        }
+        if (arenas.isEmpty()) {
+            ItemStack it = new ItemStack(Material.MAP);
+            ItemMeta im = it.getItemMeta();
+            im.setDisplayName("§7No PG maps available");
+            it.setItemMeta(im);
+            inv.setItem(13, it);
         }
         inv.setItem(size - 1, named(new ItemStack(Material.BARRIER), "§cBack"));
         return inv;
