@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public class PrivateGame {
     private final UUID host;
-    private final String category; // Always "PG" per your request
+    private final String category;
     private final Set<UUID> members = new LinkedHashSet<>();
     private final List<String> allowedTeams; // [RED, GREEN]
 
