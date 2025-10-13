@@ -8,7 +8,7 @@ commands:
     description: Party commands (invite, accept, leave, disband, list, promote)
     aliases: [p]
     permission: PG.party.base
-    usage: "/party <invite|accept|leave|disband|list|promote> [player]"
+    usage: "/party <invite|accept|leave|disband|list|promote> [players...]"
   pg:
     description: Private Games commands for category PG
     permission: PG.pg.base

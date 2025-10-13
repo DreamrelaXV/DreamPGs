@@ -11,6 +11,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,23 +45,44 @@ public class PartyCommand implements CommandExecutor, TabCompleter {
             case "invite":
             case "inv":
                 if (!player.hasPermission("PG.party.invite")) { player.sendMessage("§cNo permission."); return true; }
-                if (args.length < 2) { player.sendMessage("§eUsage: /party invite <player>"); return true; }
-                Player target = Bukkit.getPlayer(args[1]);
-                if (target == null) { player.sendMessage("§cPlayer not found."); return true; }
+                if (args.length < 2) { player.sendMessage("§eUsage: /party invite <player...>"); return true; }
                 if (pm.getParty(player.getUniqueId()).isPresent() && !pm.isLeader(player.getUniqueId())) {
                     player.sendMessage("§cOnly the party leader can invite.");
                     return true;
                 }
+                // Ensure party exists for inviter
                 pm.getParty(player.getUniqueId()).orElseGet(() -> pm.createParty(player.getUniqueId()));
-                if (pm.invite(player.getUniqueId(), target.getUniqueId())) {
-                    player.sendMessage("§aInvited §e" + target.getName() + "§a to the party. They can /party accept.");
-                    target.sendMessage("§6[Party] §e" + player.getName() + "§a invited you. Use §e/party accept§a to join.");
-                    // Auto-open GUI for leader if this is the first member
-                    plugin.getPrivateGameManager().getByHost(player.getUniqueId()).ifPresent(pg -> {
-                        // No-op here; GUI opens on /pg create
-                    });
-                } else {
-                    player.sendMessage("§cCould not send invite.");
+
+                int invited = 0;
+                List<String> notFound = new ArrayList<>();
+                Set<UUID> alreadyInvited = new HashSet<>();
+
+                for (int i = 1; i < args.length; i++) {
+                    String name = args[i];
+                    Player target = Bukkit.getPlayer(name);
+                    if (target == null) { notFound.add(name); continue; }
+                    if (alreadyInvited.contains(target.getUniqueId())) continue;
+                    alreadyInvited.add(target.getUniqueId());
+
+                    if (pm.invite(player.getUniqueId(), target.getUniqueId())) {
+                        invited++;
+                        player.sendMessage("§aInvited §e" + target.getName() + "§a to the party. (Click message sent)");
+                        // Send clickable /party accept message to target
+                        TextComponent base = new TextComponent("§6[Party] §e" + player.getName() + " §ainvited you. ");
+                        TextComponent click = new TextComponent("§a[CLICK TO ACCEPT]");
+                        click.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/party accept"));
+                        click.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new net.md_5.bungee.api.chat.BaseComponent[]{ new TextComponent("Click to run /party accept") }));
+                        target.spigot().sendMessage(base, click);
+                    } else {
+                        player.sendMessage("§cCould not send invite to §e" + target.getName() + "§c.");
+                    }
+                }
+
+                if (!notFound.isEmpty()) {
+                    player.sendMessage("§eNot online: §7" + String.join("§7, §r", notFound));
+                }
+                if (invited == 0 && notFound.isEmpty()) {
+                    player.sendMessage("§cNo valid players to invite.");
                 }
                 return true;
             case "accept":
