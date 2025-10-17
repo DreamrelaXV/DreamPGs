@@ -64,16 +64,20 @@ public class BW1058Hook {
             String arenaName = resolveArenaName(chosenArena);
 
             int success = 0;
-            boolean toggle = true; // RED first, then GREEN
+            int idx = 0;
+            java.util.List<String> teams = new java.util.ArrayList<>();
+            if (allowedTeams != null) {
+                for (String t : allowedTeams) if (t != null && !t.trim().isEmpty()) teams.add(t.trim().toUpperCase(java.util.Locale.ROOT));
+            }
+            if (teams.size() < 2) teams = java.util.Arrays.asList("RED", "GREEN");
+
             for (Player p : players) {
                 boolean joined = tryJoinPlayerToArena(arenaUtil, chosenArena, arenaName, p);
                 if (joined) {
                     success++;
-                    String teamName = allowedTeams != null && allowedTeams.size() >= 2
-                            ? (toggle ? allowedTeams.get(0) : allowedTeams.get(1))
-                            : null;
-                    toggle = !toggle;
-                    if (teamName != null) tryAssignTeam(chosenArena, p, teamName);
+                    String teamName = teams.get(idx % teams.size());
+                    idx++;
+                    tryAssignTeam(chosenArena, p, teamName);
                 }
             }
 

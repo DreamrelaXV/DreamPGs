@@ -7,6 +7,7 @@ import com.dreamrela.party.PartyManager;
 import com.dreamrela.privategame.PrivateGameManager;
 import com.dreamrela.storage.StorageManager;
 import com.dreamrela.gui.GUIListener;
+import com.dreamrela.team.TeamManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class DreamPGs extends JavaPlugin {
@@ -17,6 +18,7 @@ public class DreamPGs extends JavaPlugin {
     private PrivateGameManager privateGameManager;
     private StorageManager storageManager;
     private BW1058Hook bw1058Hook;
+    private TeamManager teamManager;
 
     @Override
     public void onEnable() {
@@ -31,8 +33,9 @@ public class DreamPGs extends JavaPlugin {
             getLogger().warning("BedWars1058 API not found. Private game start will be limited.");
         }
 
+        this.teamManager = new TeamManager(getConfig());
         this.partyManager = new PartyManager(this);
-        this.privateGameManager = new PrivateGameManager(this, bw1058Hook);
+        this.privateGameManager = new PrivateGameManager(this, bw1058Hook, teamManager);
         this.storageManager = new StorageManager(this);
 
         // Register commands
@@ -75,5 +78,9 @@ public class DreamPGs extends JavaPlugin {
 
     public StorageManager getStorageManager() {
         return storageManager;
+    }
+
+    public TeamManager getTeamManager() {
+        return teamManager;
     }
 }

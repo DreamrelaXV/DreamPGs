@@ -3,6 +3,7 @@ package com.dreamrela.privategame;
 import com.dreamrela.DreamPGs;
 import com.dreamrela.bw.BW1058Hook;
 import com.dreamrela.party.PartyManager;
+import com.dreamrela.team.TeamManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -13,13 +14,15 @@ import java.util.stream.Collectors;
 public class PrivateGameManager {
     private final DreamPGs plugin;
     private final BW1058Hook bwHook;
+    private final TeamManager teamManager;
 
     // Host UUID -> PrivateGame
     private final Map<UUID, PrivateGame> games = new ConcurrentHashMap<>();
 
-    public PrivateGameManager(DreamPGs plugin, BW1058Hook bwHook) {
+    public PrivateGameManager(DreamPGs plugin, BW1058Hook bwHook, TeamManager teamManager) {
         this.plugin = plugin;
         this.bwHook = bwHook;
+        this.teamManager = teamManager;
     }
 
     public void shutdown() {
@@ -37,7 +40,7 @@ public class PrivateGameManager {
             // Must be in a party with at least 2 members to create a PG
             return null;
         }
-        List<String> allowedTeams = Arrays.asList("RED", "GREEN");
+        List<String> allowedTeams = new ArrayList<>(teamManager.getEnabledTeams());
         PrivateGame pg = new PrivateGame(host, "PG", allowedTeams);
         // sync members from party at create time (only party members)
         pg.setMembers(new java.util.LinkedHashSet<>(optParty.get().getMembers()));
@@ -97,7 +100,10 @@ public class PrivateGameManager {
             started = bwHook.startPrivateMatchWithAssignments(pg.getArenaName(), onlineMembers, pg.getAssignments());
         }
         if (!started) {
-            bwHook.startPrivateMatchWithTwoTeams(onlineMembers, pg.getAllowedTeams());
+            // Round-robin through configured teams to ensure proper distribution
+            List<String> teams = pg.getAllowedTeams();
+            if (teams == null || teams.size() < 2) teams = teamManager.getEnabledTeams();
+            bwHook.startPrivateMatchWithTwoTeams(onlineMembers, teams);
         }
 
         // increment hosting count after start attempt

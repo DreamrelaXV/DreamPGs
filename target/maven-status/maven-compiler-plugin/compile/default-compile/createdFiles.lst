@@ -11,3 +11,4 @@ com\dreamrela\commands\PGAdminCommand.class
 com\dreamrela\party\Party.class
 com\dreamrela\party\PartyManager.class
 com\dreamrela\DreamPGs.class
+com\dreamrela\team\TeamManager.class
