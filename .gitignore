@@ -1,0 +1,3 @@
+# Build artifacts
+# Ignore Maven/Java build output
+/target/
