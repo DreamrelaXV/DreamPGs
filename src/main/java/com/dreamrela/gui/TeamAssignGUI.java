@@ -47,7 +47,14 @@ public class TeamAssignGUI {
     }
 
     private static ItemStack skullFor(Player p, PrivateGame pg) {
-        ItemStack it = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+        ItemStack it;
+        try {
+            // 1.13+
+            it = new ItemStack(Material.valueOf("PLAYER_HEAD"));
+        } catch (Throwable t) {
+            // pre-1.13
+            it = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+        }
         SkullMeta sm = (SkullMeta) it.getItemMeta();
         sm.setOwner(p.getName());
         String team = pg.getAssignments().get(p.getUniqueId());

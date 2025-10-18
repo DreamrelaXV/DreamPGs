@@ -96,14 +96,29 @@ public class PrivateGameManager {
 
         // Try start using selected arena and explicit assignments; fallback to alternating
         boolean started = false;
+        List<String> allowed = pg.getAllowedTeams();
+        if (allowed == null || allowed.size() < 2) allowed = teamManager.getEnabledTeams();
+        final java.util.Set<String> allowedSet = new java.util.HashSet<>();
+        for (String t : allowed) if (t != null) allowedSet.add(t.toUpperCase(java.util.Locale.ROOT));
+
         if (pg.getArenaName() != null && !pg.getArenaName().isEmpty() && !pg.getAssignments().isEmpty()) {
-            started = bwHook.startPrivateMatchWithAssignments(pg.getArenaName(), onlineMembers, pg.getAssignments());
+            // Filter/normalize assignments to allowed teams only; unknowns are remapped round-robin to allowed
+            java.util.Map<java.util.UUID, String> filtered = new java.util.LinkedHashMap<>();
+            int rr = 0;
+            for (Player p : onlineMembers) {
+                String val = pg.getAssignments().get(p.getUniqueId());
+                String norm = val == null ? null : val.trim().toUpperCase(java.util.Locale.ROOT);
+                if (norm == null || !allowedSet.contains(norm)) {
+                    norm = allowed.get(rr % allowed.size()).toUpperCase(java.util.Locale.ROOT);
+                    rr++;
+                }
+                filtered.put(p.getUniqueId(), norm);
+            }
+            started = bwHook.startPrivateMatchWithAssignments(pg.getArenaName(), onlineMembers, filtered);
         }
         if (!started) {
-            // Round-robin through configured teams to ensure proper distribution
-            List<String> teams = pg.getAllowedTeams();
-            if (teams == null || teams.size() < 2) teams = teamManager.getEnabledTeams();
-            bwHook.startPrivateMatchWithTwoTeams(onlineMembers, teams);
+            // Round-robin through configured teams to ensure proper distribution (limited strictly to allowed)
+            bwHook.startPrivateMatchWithTwoTeams(onlineMembers, allowed);
         }
 
         // increment hosting count after start attempt

@@ -197,12 +197,33 @@ public class BW1058Hook {
 
     private void tryAssignTeam(Object arena, Player p, String teamName) {
         try {
-            Object team = findTeamByName(arena, teamName);
-            if (team != null) {
-                if (!tryInvoke(team, "addMember", p)) {
-                    tryInvoke(arena, "assignTeam", p, team);
-                }
+            String normalized = normalizeTeamName(teamName);
+            Object team = findTeamByName(arena, normalized);
+            if (team == null) return;
+
+            // Try with BedWars player object if available
+            Object bwPlayer = getBedWarsPlayer(p);
+
+            // If already in a different team, try to remove then proceed
+            Object currentTeam = bwPlayer != null ? safeInvoke(arena, "getTeamOf", bwPlayer) : safeInvoke(arena, "getTeamOf", p);
+            if (currentTeam == null) currentTeam = bwPlayer != null ? safeInvoke(arena, "getPlayerTeam", bwPlayer) : safeInvoke(arena, "getPlayerTeam", p);
+            if (currentTeam != null && currentTeam != team) {
+                tryInvoke(currentTeam, "removeMember", bwPlayer != null ? bwPlayer : p);
+                tryInvoke(currentTeam, "removePlayer", p);
             }
+
+            // Prefer team.addMember(bwPlayer)
+            if (bwPlayer != null && tryInvoke(team, "addMember", bwPlayer)) return;
+            // Fallbacks: add by Player or assign via arena APIs
+            if (tryInvoke(team, "addMember", p)) return;
+            if (tryInvoke(team, "addPlayer", p)) return;
+            if (tryInvoke(arena, "assignTeam", p, team)) return;
+            if (tryInvoke(arena, "setPlayerTeam", p, team)) return;
+            if (tryInvoke(arena, "moveToTeam", p, team)) return;
+
+            // As a last resort, try player command fallbacks
+            try { p.performCommand("bw team " + normalized.toLowerCase(java.util.Locale.ROOT)); } catch (Throwable ignored) {}
+            try { p.performCommand("bedwars team " + normalized.toLowerCase(java.util.Locale.ROOT)); } catch (Throwable ignored) {}
         } catch (Throwable ignored) {}
     }
 
@@ -246,13 +267,19 @@ public class BW1058Hook {
     }
 
     private Object findTeamByName(Object arena, String teamName) {
+        String target = normalizeTeamName(teamName);
         try {
             List<?> teams = castList(safeInvoke(arena, "getTeams"));
             if (teams == null) return null;
             for (Object t : teams) {
-                Object color = safeInvoke(t, "getColor");
-                String name = color != null ? String.valueOf(color) : String.valueOf(safeInvoke(t, "getName"));
-                if (teamName.equalsIgnoreCase(name)) return t;
+                // Try multiple name sources
+                String byColor = normalizeCandidate(safeInvoke(t, "getColor"));
+                String byName = normalizeCandidate(safeInvoke(t, "getName"));
+                String byDisplay = normalizeCandidate(safeInvoke(t, "getDisplayName"));
+                String byColorName = normalizeCandidate(safeInvoke(safeInvoke(t, "getColor"), "name"));
+                if (target.equals(byColor) || target.equals(byName) || target.equals(byDisplay) || target.equals(byColorName)) {
+                    return t;
+                }
             }
         } catch (Throwable ignored) {}
         return null;
@@ -260,6 +287,7 @@ public class BW1058Hook {
 
     private Object safeInvoke(Object target, String method, Object... args) {
         try {
+            if (target == null) return null;
             return invoke(target, method, args);
         } catch (Throwable ignored) {
             return null;
@@ -273,7 +301,7 @@ public class BW1058Hook {
 
     private Object invoke(Object target, String method, Object... args) throws Exception {
         Class<?>[] types = new Class<?>[args.length];
-        for (int i = 0; i < args.length; i++) types[i] = args[i].getClass();
+        for (int i = 0; i < args.length; i++) types[i] = args[i] != null ? args[i].getClass() : Object.class;
         Method m = findMethod(target.getClass(), method, types);
         if (m == null) throw new NoSuchMethodException(method);
         m.setAccessible(true);
@@ -296,10 +324,36 @@ public class BW1058Hook {
             boolean ok = true;
             Class<?>[] pts = m.getParameterTypes();
             for (int i = 0; i < pts.length; i++) {
+                if (types[i] == Object.class) continue; // allow nulls / any
                 if (!pts[i].isAssignableFrom(types[i])) { ok = false; break; }
             }
             if (ok) return m;
         }
         return null;
+    }
+
+    private Object getBedWarsPlayer(Player p) {
+        try {
+            Object pm = safeInvoke(bedWarsApi, "getPlayerManager");
+            Object bw = safeInvoke(pm, "getBedwarsPlayer", p);
+            if (bw == null) bw = safeInvoke(pm, "getBedwarsPlayer", p.getUniqueId());
+            if (bw == null) bw = safeInvoke(pm, "getPlayer", p);
+            return bw;
+        } catch (Throwable ignored) { return null; }
+    }
+
+    private String normalizeTeamName(String name) {
+        if (name == null) return null;
+        String n = name.trim().toUpperCase(java.util.Locale.ROOT).replace(' ', '_');
+        if (n.equals("GREY")) n = "GRAY";
+        if (n.equals("LIGHTBLUE") || n.equals("LIGHT_BLUE") || n.equals("CYAN")) n = "AQUA";
+        return n;
+    }
+
+    private String normalizeCandidate(Object val) {
+        if (val == null) return null;
+        String s = String.valueOf(val);
+        if (s == null) return null;
+        return normalizeTeamName(s);
     }
 }

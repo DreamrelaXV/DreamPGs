@@ -35,7 +35,7 @@ public class GUIListener implements Listener {
         HumanEntity he = e.getWhoClicked();
         if (!(he instanceof Player)) return;
         Player p = (Player) he;
-        String title = e.getView().getTopInventory().getTitle();
+        String title = e.getView().getTitle();
 
         if (title.equals(TeamAssignGUI.title(p.getUniqueId()))) {
             e.setCancelled(true);
@@ -60,7 +60,7 @@ public class GUIListener implements Listener {
             }
 
             // Player skull toggling
-            if (it.getType() == Material.SKULL_ITEM && it.getItemMeta() instanceof SkullMeta) {
+            if ((it.getType() == Material.SKULL_ITEM || it.getType().name().equalsIgnoreCase("PLAYER_HEAD")) && it.getItemMeta() instanceof SkullMeta) {
                 SkullMeta sm = (SkullMeta) it.getItemMeta();
                 String targetName = sm.getOwner();
                 if (targetName == null) return;
