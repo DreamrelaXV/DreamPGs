@@ -101,23 +101,30 @@ public class PrivateGameManager {
         final java.util.Set<String> allowedSet = new java.util.HashSet<>();
         for (String t : allowed) if (t != null) allowedSet.add(t.toUpperCase(java.util.Locale.ROOT));
 
-        if (pg.getArenaName() != null && !pg.getArenaName().isEmpty() && !pg.getAssignments().isEmpty()) {
-            // Filter/normalize assignments to allowed teams only; unknowns are remapped round-robin to allowed
-            java.util.Map<java.util.UUID, String> filtered = new java.util.LinkedHashMap<>();
-            int rr = 0;
-            for (Player p : onlineMembers) {
-                String val = pg.getAssignments().get(p.getUniqueId());
-                String norm = val == null ? null : val.trim().toUpperCase(java.util.Locale.ROOT);
-                if (norm == null || !allowedSet.contains(norm)) {
-                    norm = allowed.get(rr % allowed.size()).toUpperCase(java.util.Locale.ROOT);
-                    rr++;
-                }
-                filtered.put(p.getUniqueId(), norm);
+        // Ensure we have an arena selected; pick first PG joinable if missing
+        if (pg.getArenaName() == null || pg.getArenaName().isEmpty()) {
+            java.util.List<String> candidates = plugin.getBw1058Hook().listArenasByGroup(pg.getCategory(), true);
+            if (!candidates.isEmpty()) pg.setArenaName(candidates.get(0));
+        }
+
+        // Always build a filtered assignment map limited to allowed teams
+        java.util.Map<java.util.UUID, String> filtered = new java.util.LinkedHashMap<>();
+        int rr = 0;
+        for (Player p : onlineMembers) {
+            String val = pg.getAssignments().get(p.getUniqueId());
+            String norm = val == null ? null : val.trim().toUpperCase(java.util.Locale.ROOT);
+            if (norm == null || !allowedSet.contains(norm)) {
+                norm = allowed.get(rr % allowed.size()).toUpperCase(java.util.Locale.ROOT);
+                rr++;
             }
+            filtered.put(p.getUniqueId(), norm);
+        }
+
+        if (pg.getArenaName() != null && !pg.getArenaName().isEmpty()) {
             started = bwHook.startPrivateMatchWithAssignments(pg.getArenaName(), onlineMembers, filtered);
         }
         if (!started) {
-            // Round-robin through configured teams to ensure proper distribution (limited strictly to allowed)
+            // Fallback: use autodiscovered arena via hook
             bwHook.startPrivateMatchWithTwoTeams(onlineMembers, allowed);
         }
 

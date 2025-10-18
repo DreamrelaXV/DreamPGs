@@ -72,12 +72,15 @@ public class BW1058Hook {
             if (teams.size() < 2) teams = java.util.Arrays.asList("RED", "GREEN");
 
             for (Player p : players) {
+                // Pre-select preference before join (best effort)
+                String teamName = teams.get(idx % teams.size());
+                preSelectTeam(chosenArena, p, teamName);
                 boolean joined = tryJoinPlayerToArena(arenaUtil, chosenArena, arenaName, p);
                 if (joined) {
                     success++;
-                    String teamName = teams.get(idx % teams.size());
                     idx++;
-                    tryAssignTeam(chosenArena, p, teamName);
+                    // Post-join, schedule multiple attempts to ensure final assignment sticks
+                    scheduleAssignTeam(chosenArena, p, teamName);
                 }
             }
 
@@ -173,11 +176,12 @@ public class BW1058Hook {
 
             int success = 0;
             for (Player p : players) {
+                String teamName = assignments.getOrDefault(p.getUniqueId(), null);
+                if (teamName != null) preSelectTeam(chosenArena, p, teamName);
                 boolean joined = tryJoinPlayerToArena(arenaUtil, chosenArena, arenaName, p);
                 if (joined) {
                     success++;
-                    String teamName = assignments.getOrDefault(p.getUniqueId(), null);
-                    if (teamName != null) tryAssignTeam(chosenArena, p, teamName);
+                    if (teamName != null) scheduleAssignTeam(chosenArena, p, teamName);
                 }
             }
             for (Player p : players) {
@@ -192,6 +196,43 @@ public class BW1058Hook {
             players.forEach(p -> p.sendMessage("§cFailed to start in arena: " + t.getClass().getSimpleName()));
             plugin.getLogger().warning("BW1058 startWithAssignments error: " + t.getMessage());
             return false;
+        }
+    }
+
+    private void preSelectTeam(Object arena, Player p, String teamName) {
+        try {
+            String normalized = normalizeTeamName(teamName);
+            Object team = findTeamByName(arena, normalized);
+            Object bwPlayer = getBedWarsPlayer(p);
+            Object color = team != null ? safeInvoke(team, "getColor") : null;
+            // Try setting preferences on BedWars player prior to join
+            if (bwPlayer != null && team != null) {
+                if (tryInvoke(bwPlayer, "setTargetTeam", team)) return;
+                if (tryInvoke(bwPlayer, "setPreferredTeam", team)) return;
+                if (tryInvoke(bwPlayer, "setRequestedTeam", team)) return;
+                if (color != null) {
+                    if (tryInvoke(bwPlayer, "setTargetTeamColor", color)) return;
+                    if (tryInvoke(bwPlayer, "setPreferredTeamColor", color)) return;
+                }
+            }
+            // Fallback to command pre-select with proper label case
+            String label = teamLabel(normalized);
+            try { p.performCommand("bw team " + label); } catch (Throwable ignored) {}
+            try { p.performCommand("bedwars team " + label); } catch (Throwable ignored) {}
+        } catch (Throwable ignored) {}
+    }
+
+    private void scheduleAssignTeam(Object arena, Player p, String teamName) {
+        // Try multiple times post-join; stop early when verified
+        int[] delays = new int[]{2, 10, 40, 80, 120, 160, 200, 260};
+        String target = normalizeTeamName(teamName);
+        for (int d : delays) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                String cur = getPlayerTeamName(arena, p);
+                if (!target.equals(cur)) {
+                    tryAssignTeam(arena, p, target);
+                }
+            }, d);
         }
     }
 
@@ -212,18 +253,34 @@ public class BW1058Hook {
                 tryInvoke(currentTeam, "removePlayer", p);
             }
 
-            // Prefer team.addMember(bwPlayer)
+            // Strong attempts using BedWars player first
+            if (bwPlayer != null) {
+                if (tryInvoke(bwPlayer, "setTeam", team)) return;
+                if (tryInvoke(bwPlayer, "joinTeam", team)) return;
+                if (tryInvoke(bwPlayer, "changeTeam", team)) return;
+                Object color = safeInvoke(team, "getColor");
+                if (color != null) {
+                    if (tryInvoke(bwPlayer, "setTeamColor", color)) return;
+                }
+            }
+
+            // Team-level additions
             if (bwPlayer != null && tryInvoke(team, "addMember", bwPlayer)) return;
-            // Fallbacks: add by Player or assign via arena APIs
             if (tryInvoke(team, "addMember", p)) return;
             if (tryInvoke(team, "addPlayer", p)) return;
-            if (tryInvoke(arena, "assignTeam", p, team)) return;
-            if (tryInvoke(arena, "setPlayerTeam", p, team)) return;
-            if (tryInvoke(arena, "moveToTeam", p, team)) return;
 
-            // As a last resort, try player command fallbacks
-            try { p.performCommand("bw team " + normalized.toLowerCase(java.util.Locale.ROOT)); } catch (Throwable ignored) {}
-            try { p.performCommand("bedwars team " + normalized.toLowerCase(java.util.Locale.ROOT)); } catch (Throwable ignored) {}
+            // Arena-level assignment
+            if (tryInvoke(arena, "assignTeam", p, team)) return;
+            if (bwPlayer != null && tryInvoke(arena, "assignTeam", bwPlayer, team)) return;
+            if (tryInvoke(arena, "setPlayerTeam", p, team)) return;
+            if (bwPlayer != null && tryInvoke(arena, "setPlayerTeam", bwPlayer, team)) return;
+            if (tryInvoke(arena, "moveToTeam", p, team)) return;
+            if (bwPlayer != null && tryInvoke(arena, "moveToTeam", bwPlayer, team)) return;
+
+            // As a last resort, try player command fallbacks (use proper label case)
+            String label = teamLabel(normalized);
+            try { p.performCommand("bw team " + label); } catch (Throwable ignored) {}
+            try { p.performCommand("bedwars team " + label); } catch (Throwable ignored) {}
         } catch (Throwable ignored) {}
     }
 
@@ -355,5 +412,39 @@ public class BW1058Hook {
         String s = String.valueOf(val);
         if (s == null) return null;
         return normalizeTeamName(s);
+    }
+
+    private String teamLabel(String normalizedUpper) {
+        if (normalizedUpper == null) return null;
+        switch (normalizedUpper) {
+            case "RED": return "Red";
+            case "GREEN": return "Green";
+            case "BLUE": return "Blue";
+            case "YELLOW": return "Yellow";
+            case "AQUA": return "Aqua";
+            case "PINK": return "Pink";
+            case "WHITE": return "White";
+            case "GRAY": return "Gray";
+            case "ORANGE": return "Orange";
+            case "PURPLE": return "Purple";
+            default:
+                // Title-case fallback
+                String lc = normalizedUpper.toLowerCase(java.util.Locale.ROOT);
+                return Character.toUpperCase(lc.charAt(0)) + lc.substring(1);
+        }
+    }
+
+    private String getPlayerTeamName(Object arena, Player p) {
+        try {
+            Object bwPlayer = getBedWarsPlayer(p);
+            Object team = bwPlayer != null ? safeInvoke(arena, "getTeamOf", bwPlayer) : safeInvoke(arena, "getTeamOf", p);
+            if (team == null) team = bwPlayer != null ? safeInvoke(arena, "getPlayerTeam", bwPlayer) : safeInvoke(arena, "getPlayerTeam", p);
+            if (team == null) return null;
+            String byColor = normalizeCandidate(safeInvoke(team, "getColor"));
+            String byName = normalizeCandidate(safeInvoke(team, "getName"));
+            return byColor != null ? byColor : byName;
+        } catch (Throwable t) {
+            return null;
+        }
     }
 }
