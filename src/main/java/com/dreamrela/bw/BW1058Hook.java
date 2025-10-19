@@ -174,28 +174,83 @@ public class BW1058Hook {
                 return false;
             }
 
-            int success = 0;
+            // CRITICAL FIX: Pre-select teams BEFORE joining to work with experimental team assignment
             for (Player p : players) {
                 String teamName = assignments.getOrDefault(p.getUniqueId(), null);
-                if (teamName != null) preSelectTeam(chosenArena, p, teamName);
-                boolean joined = tryJoinPlayerToArena(arenaUtil, chosenArena, arenaName, p);
-                if (joined) {
-                    success++;
-                    if (teamName != null) scheduleAssignTeam(chosenArena, p, teamName);
+                if (teamName != null) {
+                    // Use aggressive pre-selection with multiple attempts
+                    aggressivePreSelectTeam(chosenArena, p, teamName);
                 }
             }
-            for (Player p : players) {
-                if (success > 0) {
-                    p.sendMessage("§aJoined arena §e" + arenaName + "§a (" + success + "/" + players.size() + ") with assigned teams where possible.");
-                } else {
-                    p.sendMessage("§cFailed to join arena §e" + arenaName + "§c. Ensure it is joinable.");
+
+            // Small delay to let pre-selection register
+            final Object finalArena = chosenArena;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                int success = 0;
+                for (Player p : players) {
+                    boolean joined = tryJoinPlayerToArena(arenaUtil, finalArena, arenaName, p);
+                    if (joined) {
+                        success++;
+                        String teamName = assignments.getOrDefault(p.getUniqueId(), null);
+                        if (teamName != null) {
+                            // Continue trying to assign after join
+                            scheduleAggressiveAssignTeam(finalArena, p, teamName);
+                        }
+                    }
                 }
-            }
-            return success > 0;
+                
+                final int finalSuccess = success;
+                for (Player p : players) {
+                    if (finalSuccess > 0) {
+                        p.sendMessage("§aJoined arena §e" + arenaName + "§a (" + finalSuccess + "/" + players.size() + ") with assigned teams.");
+                    } else {
+                        p.sendMessage("§cFailed to join arena §e" + arenaName + "§c. Ensure it is joinable.");
+                    }
+                }
+            }, 5L); // 5 tick delay
+
+            return true;
         } catch (Throwable t) {
             players.forEach(p -> p.sendMessage("§cFailed to start in arena: " + t.getClass().getSimpleName()));
             plugin.getLogger().warning("BW1058 startWithAssignments error: " + t.getMessage());
             return false;
+        }
+    }
+
+    // NEW: Aggressive pre-selection that tries multiple methods immediately
+    private void aggressivePreSelectTeam(Object arena, Player p, String teamName) {
+        String normalized = normalizeTeamName(teamName);
+        
+        // Try multiple times with slight delays to override experimental assignment
+        for (int i = 0; i < 3; i++) {
+            final int attempt = i;
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                try {
+                    Object team = findTeamByName(arena, normalized);
+                    if (team == null) return;
+                    
+                    Object bwPlayer = getBedWarsPlayer(p);
+                    Object color = safeInvoke(team, "getColor");
+                    
+                    // Try all available methods
+                    if (bwPlayer != null) {
+                        tryInvoke(bwPlayer, "setTeamPreference", team);
+                        tryInvoke(bwPlayer, "setPreferredTeam", team);
+                        tryInvoke(bwPlayer, "setRequestedTeam", team);
+                        tryInvoke(bwPlayer, "setTargetTeam", team);
+                        if (color != null) {
+                            tryInvoke(bwPlayer, "setTeamColorPreference", color);
+                            tryInvoke(bwPlayer, "setPreferredTeamColor", color);
+                            tryInvoke(bwPlayer, "setTargetTeamColor", color);
+                        }
+                    }
+                    
+                    // Command fallback
+                    String label = teamLabel(normalized);
+                    try { p.performCommand("bw team " + label); } catch (Throwable ignored) {}
+                    try { p.performCommand("bedwars team " + label); } catch (Throwable ignored) {}
+                } catch (Throwable ignored) {}
+            }, attempt * 2L);
         }
     }
 
@@ -205,21 +260,41 @@ public class BW1058Hook {
             Object team = findTeamByName(arena, normalized);
             Object bwPlayer = getBedWarsPlayer(p);
             Object color = team != null ? safeInvoke(team, "getColor") : null;
+            
             // Try setting preferences on BedWars player prior to join
             if (bwPlayer != null && team != null) {
                 if (tryInvoke(bwPlayer, "setTargetTeam", team)) return;
                 if (tryInvoke(bwPlayer, "setPreferredTeam", team)) return;
                 if (tryInvoke(bwPlayer, "setRequestedTeam", team)) return;
+                if (tryInvoke(bwPlayer, "setTeamPreference", team)) return;
                 if (color != null) {
                     if (tryInvoke(bwPlayer, "setTargetTeamColor", color)) return;
                     if (tryInvoke(bwPlayer, "setPreferredTeamColor", color)) return;
+                    if (tryInvoke(bwPlayer, "setTeamColorPreference", color)) return;
                 }
             }
+            
             // Fallback to command pre-select with proper label case
             String label = teamLabel(normalized);
             try { p.performCommand("bw team " + label); } catch (Throwable ignored) {}
             try { p.performCommand("bedwars team " + label); } catch (Throwable ignored) {}
         } catch (Throwable ignored) {}
+    }
+
+    // NEW: More aggressive post-join scheduling
+    private void scheduleAggressiveAssignTeam(Object arena, Player p, String teamName) {
+        // Try many more times with varying delays to fight experimental assignment
+        int[] delays = new int[]{1, 3, 5, 8, 12, 20, 30, 40, 60, 80, 100, 140, 180, 220, 280};
+        String target = normalizeTeamName(teamName);
+        
+        for (int d : delays) {
+            org.bukkit.Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                String cur = getPlayerTeamName(arena, p);
+                if (cur == null || !target.equals(cur)) {
+                    tryAssignTeam(arena, p, target);
+                }
+            }, d);
+        }
     }
 
     private void scheduleAssignTeam(Object arena, Player p, String teamName) {
