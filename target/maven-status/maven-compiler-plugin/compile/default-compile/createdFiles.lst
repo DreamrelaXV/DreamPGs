@@ -1,11 +1,8 @@
-plugin.yml
 com\dreamrela\commands\PartyCommand.class
 com\dreamrela\commands\PGCommand.class
 com\dreamrela\privategame\PrivateGame.class
-com\dreamrela\gui\GUIListener.class
 com\dreamrela\privategame\PrivateGameManager.class
 com\dreamrela\gui\MapSelectorGUI.class
-config.yml
 com\dreamrela\gui\TeamAssignGUI.class
 com\dreamrela\bw\BW1058Hook.class
 com\dreamrela\storage\StorageManager.class
